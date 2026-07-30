@@ -33,6 +33,11 @@ def get_all_categories():
 #categories = get_all_categories()
 
 categories = np.load("categories.npy", allow_pickle=True)
+category_dict = dict(zip(categories, range(len(categories))))
+
+df["NER"] = df["NER"].apply(lambda x: list(map(lambda y: category_dict[y] if y in category_dict else -1, x)))
+df["NER"] = df["NER"].apply(lambda x: (np.array(x) == -1).mean())
+
 
 
 
