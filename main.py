@@ -1,3 +1,5 @@
+# download https://recipenlg.cs.put.poznan.pl/ and convert to recipes.parquet
+
 import pandas as pd
 import pyarrow
 import numpy as np
