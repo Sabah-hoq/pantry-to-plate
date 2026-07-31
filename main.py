@@ -5,6 +5,10 @@ import pyarrow
 import numpy as np
 import matplotlib.pyplot as plt
 
+# Uncommet lines below to get .parquet file 
+# df = pd.read_csv('recipes.csv', low_memory=False)
+# df.to_parquet('recipes.parquet', index=False)
+
 df = pd.read_parquet("recipes.parquet")
 df["NER"] = df["NER"].apply(lambda x: list(map(lambda y : y[1:], x[1:-2].upper().split("\", "))))
 
@@ -30,7 +34,7 @@ def get_all_categories():
 
     return values
 
-#categories = get_all_categories()
+categories = get_all_categories()
 
 categories = np.load("categories.npy", allow_pickle=True)
 category_dict = dict(zip(categories, range(len(categories))))
