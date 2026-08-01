@@ -11,6 +11,8 @@ import torch.optim as optim
 import torch
 from tqdm import tqdm
 
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 # Uncomment lines below to get .parquet file
 # df = pd.read_csv('recipes.csv', low_memory=False)
 # df.to_parquet('recipes.parquet', index=False)
@@ -60,30 +62,29 @@ index_max = int(len(train_data) * 0.75)
 train = spiceData(train_data[:index_max], batch_size=512, train=True)
 test = spiceData(train_data[index_max:], batch_size=512, train=False)
 
-model = spiceModel()
+model = spiceModel().to(DEVICE)
 
 def print_similar_categories(trained_model):
     trained_model.load_state_dict(torch.load("model_weights.pt"))
     trained_model.eval()
-
-    total = nn.functional.softmax(trained_model(torch.eye(789,dtype=torch.float32)), dim=1)
+    out = trained_model.linear1(torch.eye(789,dtype=torch.float32))
+    out = torch.matmul(out, out.T)
+    total = nn.functional.softmax(out, dim=1)
 
     sorted_arg = torch.argsort(total, dim=1, descending=True)
-    sorted_output = torch.sort(total, dim=1, descending=True)[0][:, :10]
 
-    similar_categories = categories[torch.flatten(sorted_arg[:, :10])].reshape(-1, 10)
+    similar_categories = categories[torch.flatten(sorted_arg[:, :5])].reshape(-1, 5)
+    similar_categories = np.concat([categories[:, None], similar_categories], axis=1)
 
-    print(sorted_output)
-    print(similar_categories)
-
-#print_similar_categories(model)
-#STOP
+    for l in similar_categories[:20]:
+        print(l.tolist())
 
 loss_funct = nn.CrossEntropyLoss()
-optimizer = optim.Adagrad(model.parameters())
-scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=8, gamma=0.1)
-
-for epoch in range(50):
+optimizer = optim.AdamW(model.parameters(), lr=1e-3)
+scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
+train_losses = []
+test_losses = []
+for epoch in range(40):
     print("epoch:", epoch)
     train_loss = 0
     test_loss = 0
@@ -91,8 +92,8 @@ for epoch in range(50):
     for x, y in tqdm(train):
         optimizer.zero_grad()
 
-        pred = model(x)
-        loss = loss_funct(pred, y)
+        pred = model(x.to(DEVICE))
+        loss = loss_funct(pred, y.to(DEVICE))
         train_loss += loss.item()
 
         loss.backward()
@@ -102,10 +103,13 @@ for epoch in range(50):
     model.eval()
     with torch.no_grad():
         for x, y in tqdm(test):
-            pred = model(x)
-            loss = loss_funct(pred, y)
+            pred = model(x.to(DEVICE))
+            loss = loss_funct(pred, y.to(DEVICE))
             test_loss += loss.item()
     print("test loss:", test_loss / test.__len__())
+
+    train_losses.append(train_loss / train.__len__())
+    test_losses.append(test_loss / test.__len__())
 
     train.on_epoch_end()
     test.on_epoch_end()
@@ -113,6 +117,13 @@ for epoch in range(50):
     print()
 
 torch.save(model.state_dict(), 'model_weights.pt')
+
+print_similar_categories(model)
+
+plt.plot(train_losses)
+plt.plot(test_losses)
+plt.ylim(1, 8)
+plt.show()
 
 
 

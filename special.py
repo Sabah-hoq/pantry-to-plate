@@ -48,8 +48,8 @@ class spiceModel(nn.Module):
     def __init__(self):
         super().__init__()
 
-        self.linear1 = torch.nn.Linear(789, 256)
-        self.linear2 = torch.nn.Linear(256, 789)
+        self.linear1 = torch.nn.Linear(789, 64)
+        self.linear2 = torch.nn.Linear(64, 789)
 
 
     def forward(self, x):
